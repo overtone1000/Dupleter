@@ -34,7 +34,6 @@ std::string get_file_hash(path path)
 
 		std::string line;
 		while(fp >> line){
-            console(line);
 			SHA256_Update(&ctx,line.c_str(),line.size());
 		}
         SHA256_Final(digest,&ctx);
@@ -112,7 +111,6 @@ stringmap* process_size_map(sizemap* map, bool verbose)
                 {
                     std::string key = std::to_string(it->first) + "_" + hash;
 
-                    std::cout << "   Hash key:" << key << " for " << path_vec->at(n) << std::endl;
                     std::vector<path>* sub_path_vec;
                     if(map_by_sizehash->count(key)<=0)
                     {
