@@ -32,6 +32,8 @@
 			"label": "Run Dupleter",
 			"command": "./build/dupleter",
 			"args": [
+				"--delete",
+				"--verbose",
 				"--dir",
 				"./test_dir"
 			],

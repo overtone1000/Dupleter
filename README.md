@@ -6,5 +6,5 @@ Dependencies are in `./src/deps` but are excluded from this repository in `.giti
 * Boost: Uses program_options, which requires a build. Run `bootstrap.sh` and then `./b2`.
 * OpenSSL: For now just using pre-installed openssl on ubuntu.
 
-#Pushing to a Docker Container
+## Pushing to a Docker Container for Testing
 `sudo docker cp ./build/dupleter $CONTAINER_NAME:$DIRECTORY`

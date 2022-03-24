@@ -12,9 +12,11 @@ void console(std::string message)
     std::cout<<message<<std::endl;
 }
 
-std::map<std::string,std::filesystem::path>* file_hash_map;
+typedef std::filesystem::path path;
+typedef std::map<std::string,std::vector<path>*> stringmap;
+typedef std::map<long,std::vector<path>*> sizemap;
 
-std::string* get_file_hash(std::filesystem::path path)
+std::string get_file_hash(path path)
 {
 	std::fstream fp;
     unsigned char digest[SHA256_DIGEST_LENGTH];
@@ -22,7 +24,7 @@ std::string* get_file_hash(std::filesystem::path path)
 	fp.open(path,std::ios::in);
 	if(!(fp.is_open())){
 		fprintf(stderr,"Unable to open the file\n");
-		return NULL;
+		return "";
 	}
 	else {
         //Genrating hash of the file
@@ -32,35 +34,45 @@ std::string* get_file_hash(std::filesystem::path path)
 
 		std::string line;
 		while(fp >> line){
+            console(line);
 			SHA256_Update(&ctx,line.c_str(),line.size());
 		}
         SHA256_Final(digest,&ctx);
 	}
 	fp.close();
 
-    std::string* return_value=new std::string((char*)&digest);
-    return return_value;
+    std::stringstream ss;
+    for(int i = 0; i < SHA256_DIGEST_LENGTH; i++)
+    {
+        ss << std::hex << std::setw(2) << std::setfill('0') << (int)digest[i];
+    }
+
+    return ss.str();
 }
 
-void scan_directory(std::filesystem::path path)
+void scan_directory(const path current_directory, sizemap* map_by_size, bool verbose)
 {
-    for (const std::filesystem::directory_entry child : std::filesystem::directory_iterator(path)) {
+    for (const std::filesystem::directory_entry child : std::filesystem::directory_iterator(current_directory)) {
         const std::string filenameStr = child.path().filename().string();
         if (child.is_directory()) {
-            console("Moving into subdirectory " + child.path().string());
-            scan_directory(child.path());
+            if(verbose){console("Moving into subdirectory " + child.path().string());}
+            scan_directory(child.path(),map_by_size, verbose);
         }
         else if (child.is_regular_file()) {
-            std::string* hash=get_file_hash(child.path());
-            if(hash!=NULL)
+            long size=std::filesystem::file_size(child.path());
+
+            std::vector<path>* path_vec;
+            if(map_by_size->count(size)<=0)
             {
-                //console("Hash is " + *hash);
-                file_hash_map->insert_or_assign(*hash,child.path());
+                path_vec = new std::vector<path>();
+                map_by_size->insert_or_assign(size,path_vec);
             }
             else
             {
-                console("Got a null hash. Skipping.");
+                path_vec = map_by_size->at(size);
             }
+
+            path_vec->push_back(child.path());
         }
         else {
             console("Unhandled directory member " + child.path().string());
@@ -68,13 +80,99 @@ void scan_directory(std::filesystem::path path)
     }
 }
 
-void process_map()
+stringmap* process_size_map(sizemap* map, bool verbose)
 {
     console("");
-    console("Iterating through hash map.");
-    for (auto it = file_hash_map->begin(); it != file_hash_map->end(); ++it) {
-        std::cout << it->first << "," << it->second << std::endl;
+
+    if(verbose){console("Size map details:");}
+
+    stringmap* map_by_sizehash=new stringmap();
+
+    int size_match_count=0;
+    int size_match_file_count=0;
+    for (auto it = map->begin(); it != map->end(); ++it) {
+        std::vector<path>* path_vec = it->second;
+        if(path_vec->size()>1)
+        {
+            size_match_count++;
+            size_match_file_count+=path_vec->size();
+            if(verbose)
+            {
+                std::cout << "Match (" << path_vec->size() << "): "<<std::endl;
+                for(int n=0;n<path_vec->size();n++)
+                {
+                    std::cout << "   " << path_vec->at(n).string() << std::endl;
+                }
+            }
+
+            for(int n=0;n<path_vec->size();n++)
+            {
+                std::string hash=get_file_hash(path_vec->at(n));
+                if(hash!="")
+                {
+                    std::string key = std::to_string(it->first) + "_" + hash;
+
+                    std::cout << "   Hash key:" << key << " for " << path_vec->at(n) << std::endl;
+                    std::vector<path>* sub_path_vec;
+                    if(map_by_sizehash->count(key)<=0)
+                    {
+                        sub_path_vec = new std::vector<path>();
+                        map_by_sizehash->insert_or_assign(key,sub_path_vec);
+                    }
+                    else
+                    {
+                        sub_path_vec = map_by_sizehash->at(key);
+                    }
+
+                    sub_path_vec->push_back(path_vec->at(n));
+                }
+                else
+                {
+                    console("Got a null hash. Skipping.");
+                }
+            }
+        }
     }
+    std::cout << size_match_count << " matches by size involving " << size_match_file_count << " files." << std::endl;
+    return map_by_sizehash;
+}
+
+void process_sizehash_map(stringmap* map, bool verbose, bool del)
+{
+    console("");
+
+    if(verbose){console("Size-hash map details:");}
+
+    int sizehash_match_count=0;
+    int sizehash_match_file_count=0;
+    for (auto it = map->begin(); it != map->end(); ++it) {
+        std::vector<path>* path_vec = it->second;
+        if(path_vec->size()>1)
+        {
+            sizehash_match_count++;
+            sizehash_match_file_count+=path_vec->size();
+
+            if(verbose)
+            {
+                std::cout << "Match (" << path_vec->size() << "): "<<std::endl;
+                for(int n=0;n<path_vec->size();n++)
+                {
+                    std::cout << "   " << path_vec->at(n).string() << std::endl;
+                }
+            }
+
+            if(del)
+            {
+                for(int n=1;n<path_vec->size();n++)
+                {
+                    if(verbose){std::cout << "Deleting" << path_vec->at(n).string() << std::endl;}
+                    std::filesystem::remove(path_vec->at(n));
+                }
+            }
+        }
+    }
+    
+    std::cout << sizehash_match_count << " matches by size-hash involving " << sizehash_match_file_count << " files." << std::endl;
 }
 
 int main( int argc,      // Number of strings in array argv
@@ -83,8 +181,10 @@ int main( int argc,      // Number of strings in array argv
 {
     po::options_description desc("Allowed options");
     desc.add_options()
-        ("help", "Display this help message")
-        ("dir", po::value<std::string>(), "Specify the directory to search")
+        ("help", "Display this help message.")
+        ("dir", po::value<std::string>(), "Specify the directory to search. Default is the working directory.")
+        ("delete", "Delete duplicates arbitrarily, leaving only one copy.")
+        ("verbose", "See verbose output.")
     ;
 
     po::variables_map vm;
@@ -96,18 +196,30 @@ int main( int argc,      // Number of strings in array argv
         return 1;
     }
 
-    if (vm.count("dir")) {
-        file_hash_map = new std::map<std::string,std::filesystem::path>();
-        const std::filesystem::path main_directory = vm["dir"].as<std::string>();
-        console("Searching for duplicates in " + main_directory.string());
-        scan_directory(main_directory);
-        process_map();
+    bool verbose = vm.count("verbose");
+    bool del = vm.count("delete");
+
+    if(del)
+    {
+        console("Duplicates will be deleted.");
     }
     else
     {
-        console("Please specify the output directory with --dir");
-        return 0;
+        console("Dry run only. No files will be deleted.");
     }
+
+    path main_directory = "./";
+    if (vm.count("dir")) {
+        main_directory = vm["dir"].as<std::string>();
+    }
+   
+    console("Searching for duplicates in " + main_directory.string());
+    sizemap* file_size_map = new sizemap();
+    scan_directory(main_directory, file_size_map, verbose);
+    console("Processing size map");
+    stringmap* sizestringmap = process_size_map(file_size_map, verbose);
+    console("Processing size-hash map");
+    process_sizehash_map(sizestringmap,verbose,del);
 
     return 0;
 }
