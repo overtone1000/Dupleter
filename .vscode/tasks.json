@@ -1,0 +1,55 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"type": "cppbuild",
+			"label": "Build Dupleter",
+			"command": "/usr/bin/g++",
+			"args": [
+				"-std=c++17",
+				"-fdiagnostics-color=always",
+				"-I./src/deps/boost_1_78_0",
+				//"-I./src/deps/openssl-3.0.2/crypto",
+				"-g",
+				"./src/dupleter.cpp",
+				"./src/deps/boost_1_78_0/stage/lib/libboost_program_options.a",
+				//"./src/deps/openssl-3.0.2/crypto/libcrypto-lib-cryptlib.o",
+				"-lcrypto",
+				"-o",
+				"./build/dupleter"
+			],
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"problemMatcher": [
+				"$gcc"
+			],
+			"group": "build",
+			"detail": "compiler: /usr/bin/g++"
+		},
+		{
+			"type": "process",
+			"label": "Run Dupleter",
+			"command": "./build/dupleter",
+			"args": [
+				"--dir",
+				"./test_dir"
+			],
+			"problemMatcher": []
+		},
+		{
+			"label": "Build and Run",
+			"dependsOn": [
+				"Build Dupleter",
+				"Run Dupleter"
+			],
+			"dependsOrder": "sequence",
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			},
+			"isBackground": true,
+			"problemMatcher": []
+		}
+	]
+}
