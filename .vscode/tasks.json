@@ -9,14 +9,11 @@
 				"-std=c++17",
 				"-fdiagnostics-color=always",
 				"-I./src/deps/boost_1_78_0",
-				//"-I./src/deps/openssl-3.0.2/crypto",
-				"-g",
 				"./src/dupleter.cpp",
-				"./src/deps/boost_1_78_0/stage/lib/libboost_program_options.a",
-				//"./src/deps/openssl-3.0.2/crypto/libcrypto-lib-cryptlib.o",
-				"-lcrypto",
 				"-o",
-				"./build/dupleter"
+				"./build/dupleter",
+				"./src/deps/boost_1_78_0/stage/lib/libboost_program_options.a",
+				"-lcrypto"
 			],
 			"options": {
 				"cwd": "${workspaceFolder}"
