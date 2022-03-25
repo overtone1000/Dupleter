@@ -161,7 +161,7 @@ void process_sizehash_map(stringmap* map, bool verbose, bool del)
 
             if(del)
             {
-                for(int n=1;n<path_vec->size();n++)
+                for(int n=path_vec->size()-1;n>0;n--)
                 {
                     if(verbose){std::cout << "Deleting" << path_vec->at(n).string() << std::endl;}
                     std::filesystem::remove(path_vec->at(n));
