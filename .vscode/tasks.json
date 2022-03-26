@@ -29,9 +29,10 @@
 			"label": "Run Dupleter",
 			"command": "./build/dupleter",
 			"args": [
-				"--delete",
 				"--verbose",
 				"--dir",
+				"--mode",
+				"fuzzy-size-name",
 				"./test_dir"
 			],
 			"problemMatcher": []
